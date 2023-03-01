@@ -35,7 +35,7 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def get_dir_info(dirpath: Path | None) -> tuple[list[Path], list[Path]]:
+def get_dir_info(dirpath):
     if not dirpath:
         return [], []
     dirs, files = [], []
@@ -48,25 +48,28 @@ def get_dir_info(dirpath: Path | None) -> tuple[list[Path], list[Path]]:
 
 
 def get_pairs(aPaths: list[Path],
-              bPaths: list[Path]) -> Iterator[tuple[Path | None, Path | None]]:
+              bPaths: list[Path]) -> Iterator[tuple]:
     aItems = [(item, 'A') for item in aPaths]
     bItems = [(item, 'B') for item in bPaths]
     abItems = aItems + bItems
     abItems.sort(key=star(lambda item, tag: (item.name, tag)))
     for _, items in itertools.groupby(abItems,
                                       key=star(lambda item, _: item.name)):
-        match list(items):
-            case [(aItem, _), (bItem, _)]:
-                yield aItem, bItem
-            case [(item, 'A'),]:
+        items = list(items)
+        # NOTE: python 3.10's match expression can make this better
+        if len(items) == 2:
+            (aItem, _), (bItem, _) = items
+            yield aItem, bItem
+        else:
+            (item, tag), = items
+            if tag == 'A':
                 yield item, None
-            case [(item, 'B'),]:
+            else:
                 yield None, item
 
 
-def get_file_pairs(
-        a: Path | None,
-        b: Path | None) -> Iterator[tuple[Path | None, Path | None]]:
+
+def get_file_pairs(a, b) -> Iterator[tuple]:
     aDirs, aFiles = get_dir_info(a)
     bDirs, bFiles = get_dir_info(b)
     yield from get_pairs(aFiles, bFiles)
